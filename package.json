@@ -1,0 +1,14 @@
+{
+  "name": "failure",
+  "version": "1.0.0",
+  "main": "./js/src/index",
+  "dependencies": {
+    "has": "^1.0.1",
+    "isReactNative": "aleclarson/isReactNative#1.0.0",
+    "lotus-require": "aleclarson/lotus-require#1.0.0",
+    "named-function": "aleclarson/named-function#1.0.3",
+    "parseErrorStack": "aleclarson/parseErrorStack#1.0.0",
+    "set-type": "aleclarson/set-type#1.0.0",
+    "steal": "aleclarson/steal#1.0.0"
+  }
+}
