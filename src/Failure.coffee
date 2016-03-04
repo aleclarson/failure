@@ -13,6 +13,10 @@ if isReactNative
   (require "ErrorUtils").setGlobalHandler (error, isFatal = yes) ->
     { failure } = error
     failure ?= Failure error, { isFatal }
+    if isFatal
+      return if Failure.fatalError?
+      Failure.fatalError = failure
+      console.warn failure.reason
     failure.throw()
 
 module.exports =
@@ -20,7 +24,7 @@ Failure = NamedFunction "Failure", (error, newData = {}) ->
 
   if error.failure instanceof Failure
     error.trace()
-    error.addData newData
+    error.failure.addData newData
     return error.failure
 
   failure = {
@@ -31,7 +35,7 @@ Failure = NamedFunction "Failure", (error, newData = {}) ->
 
   setType failure, Failure
 
-  Failure.errors.push error
+  Failure.errorCache.push error
 
   error.failure = failure
 
@@ -40,6 +44,12 @@ Failure = NamedFunction "Failure", (error, newData = {}) ->
   failure.addData newData
 
   failure
+
+if isReactNative
+  Failure::print = ->
+    error = Error @reason
+    printErrorStack = require "printErrorStack"
+    printErrorStack error, @stack
 
 Failure::dedupe = (key) ->
 
@@ -55,11 +65,6 @@ Failure::dedupe = (key) ->
 
 Failure::throw = ->
 
-  if @isFatal
-    return if Failure.fatalError?
-    Failure.fatalError = this
-    console.warn @reason
-
   exception = Error @reason
 
   if isReactNative
@@ -67,8 +72,6 @@ Failure::throw = ->
 
   else if @isFatal
     throw exception
-
-  return
 
 Failure::addData = (newData = {}) ->
 
@@ -83,14 +86,14 @@ Failure::addData = (newData = {}) ->
     if this[key]?
       @dupes ?= {}
       @dupes[key] ?= []
-      @dupes.push value
+      @dupes[key].push value
 
     else
       this[key] = value
 
   return
 
-Failure.errors = []
+Failure.errorCache = []
 
 Failure.fatalError = null
 
@@ -104,13 +107,13 @@ Failure.combineStacks = (stack1, stack2) ->
   for frame in stack2
     continue unless frame?
     if frame instanceof Array
-      combineStacks stack1, frame
+      Failure.combineStacks stack1, frame
     else if frame instanceof Error
       stack3 = parseErrorStack frame
       if (frame.skip instanceof Number) and (frame.skip > 0)
         stack3 = stack3.slice frame.skip
-      combineStacks stack1, stack3
-    else if (frame.constructor is Object) or (frame instanceof String)
+      Failure.combineStacks stack1, stack3
+    else if (frame.constructor is Object) or (frame.constructor is String)
       stack1.push frame
   return
 
@@ -119,8 +122,8 @@ Failure.ErrorMixin =
   trace: (title) ->
     return unless @failure?
     fakeError = Error()
-    fakeError.skip = 2
-    combineStacks @failure.stack, [
+    # fakeError.skip = 2
+    Failure.combineStacks @failure.stack, [
       title ?= "::  Further up the stack  ::"
       fakeError
     ]
@@ -131,8 +134,8 @@ Failure.ErrorMixin =
 
   catch: ->
     return unless @failure?
-    index = Failure.errors.indexOf this
+    index = Failure.errorCache.indexOf this
     @failure = null
     return if index < 0
-    Failure.errors.splice index, 1
+    Failure.errorCache.splice index, 1
     return

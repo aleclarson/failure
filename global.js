@@ -1,17 +1,27 @@
 
-var Failure = require('./js/src/index');
+var Failure = require('./js/src/Failure');
 
-Object.defineProperties(obj, {
+Object.defineProperties(GLOBAL || global, {
+  Failure: {
+    configurable: false,
+    writable: false,
+    value: Failure,
+  },
+  throwFailure: {
+    configurable: false,
+    writable: false,
+    value: Failure.throwFailure,
+  },
   failure: {
-    configurable: no,
+    configurable: false,
     get: function() {
       return Failure.fatalError;
     },
   },
   errors: {
-    configurable: no,
+    configurable: false,
     get: function() {
-      return Failure.errors;
+      return Failure.errorCache;
     },
   },
 });

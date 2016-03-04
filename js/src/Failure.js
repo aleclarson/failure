@@ -27,6 +27,13 @@ if (isReactNative) {
         isFatal: isFatal
       });
     }
+    if (isFatal) {
+      if (Failure.fatalError != null) {
+        return;
+      }
+      Failure.fatalError = failure;
+      console.warn(failure.reason);
+    }
     return failure["throw"]();
   });
 }
@@ -38,7 +45,7 @@ module.exports = Failure = NamedFunction("Failure", function(error, newData) {
   }
   if (error.failure instanceof Failure) {
     error.trace();
-    error.addData(newData);
+    error.failure.addData(newData);
     return error.failure;
   }
   failure = {
@@ -47,7 +54,7 @@ module.exports = Failure = NamedFunction("Failure", function(error, newData) {
     stack: parseErrorStack(error)
   };
   setType(failure, Failure);
-  Failure.errors.push(error);
+  Failure.errorCache.push(error);
   error.failure = failure;
   ref = Failure.ErrorMixin;
   for (key in ref) {
@@ -57,6 +64,15 @@ module.exports = Failure = NamedFunction("Failure", function(error, newData) {
   failure.addData(newData);
   return failure;
 });
+
+if (isReactNative) {
+  Failure.prototype.print = function() {
+    var error, printErrorStack;
+    error = Error(this.reason);
+    printErrorStack = require("printErrorStack");
+    return printErrorStack(error, this.stack);
+  };
+}
 
 Failure.prototype.dedupe = function(key) {
   var values;
@@ -72,16 +88,9 @@ Failure.prototype.dedupe = function(key) {
 
 Failure.prototype["throw"] = function() {
   var exception;
-  if (this.isFatal) {
-    if (Failure.fatalError != null) {
-      return;
-    }
-    Failure.fatalError = this;
-    console.warn(this.reason);
-  }
   exception = Error(this.reason);
   if (isReactNative) {
-    ExceptionsManager.reportException(exception, this.isFatal, this.stack);
+    return ExceptionsManager.reportException(exception, this.isFatal, this.stack);
   } else if (this.isFatal) {
     throw exception;
   }
@@ -108,14 +117,14 @@ Failure.prototype.addData = function(newData) {
       if ((base = this.dupes)[key] == null) {
         base[key] = [];
       }
-      this.dupes.push(value);
+      this.dupes[key].push(value);
     } else {
       this[key] = value;
     }
   }
 };
 
-Failure.errors = [];
+Failure.errorCache = [];
 
 Failure.fatalError = null;
 
@@ -135,14 +144,14 @@ Failure.combineStacks = function(stack1, stack2) {
       continue;
     }
     if (frame instanceof Array) {
-      combineStacks(stack1, frame);
+      Failure.combineStacks(stack1, frame);
     } else if (frame instanceof Error) {
       stack3 = parseErrorStack(frame);
       if ((frame.skip instanceof Number) && (frame.skip > 0)) {
         stack3 = stack3.slice(frame.skip);
       }
-      combineStacks(stack1, stack3);
-    } else if ((frame.constructor === Object) || (frame instanceof String)) {
+      Failure.combineStacks(stack1, stack3);
+    } else if ((frame.constructor === Object) || (frame.constructor === String)) {
       stack1.push(frame);
     }
   }
@@ -155,8 +164,7 @@ Failure.ErrorMixin = {
       return;
     }
     fakeError = Error();
-    fakeError.skip = 2;
-    combineStacks(this.failure.stack, [title != null ? title : title = "::  Further up the stack  ::", fakeError]);
+    Failure.combineStacks(this.failure.stack, [title != null ? title : title = "::  Further up the stack  ::", fakeError]);
   },
   "throw": function() {
     var ref;
@@ -167,13 +175,13 @@ Failure.ErrorMixin = {
     if (this.failure == null) {
       return;
     }
-    index = Failure.errors.indexOf(this);
+    index = Failure.errorCache.indexOf(this);
     this.failure = null;
     if (index < 0) {
       return;
     }
-    Failure.errors.splice(index, 1);
+    Failure.errorCache.splice(index, 1);
   }
 };
 
-//# sourceMappingURL=../../map/src/index.map
+//# sourceMappingURL=../../map/src/Failure.map

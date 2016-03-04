@@ -7,4 +7,5 @@ module.exports =
   implicitDependencies: [
     "ErrorUtils"
     "ExceptionsManager"
+    "printErrorStack"
   ]
