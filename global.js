@@ -15,7 +15,7 @@ Object.defineProperties(GLOBAL || global, {
   failure: {
     configurable: false,
     get: function() {
-      return Failure.fatalError;
+      return Failure.fatality;
     },
   },
   errors: {

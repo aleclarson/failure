@@ -1,141 +1,121 @@
 
-require "lotus-require"
-
-parseErrorStack = require "parseErrorStack"
 NamedFunction = require "named-function"
 isReactNative = require "isReactNative"
-setType = require "set-type"
+isConstructor = require "isConstructor"
+Accumulator = require "accumulator"
+isObject = require "isObject"
+setType = require "setType"
 steal = require "steal"
-has = require "has"
+
+Stack = require "./Stack"
 
 if isReactNative
   ExceptionsManager = require "ExceptionsManager"
-  (require "ErrorUtils").setGlobalHandler (error, isFatal = yes) ->
-    { failure } = error
-    failure ?= Failure error, { isFatal }
-    if isFatal
-      return if Failure.fatalError?
-      Failure.fatalError = failure
+  (require "ErrorUtils").setGlobalHandler (error, isFatal) ->
+    failure = error.failure or Failure error, { isFatal }
+    if failure.isFatal
+      return if Failure.fatality
+      Failure.fatality = failure
       console.warn failure.reason
     failure.throw()
 
 module.exports =
-Failure = NamedFunction "Failure", (error, newData = {}) ->
+Failure = NamedFunction "Failure", (error, values) ->
 
-  if error.failure instanceof Failure
-    error.trace()
-    error.failure.addData newData
-    return error.failure
-
-  failure = {
-    isFatal: no
+  self =
+    isFatal: yes
     reason: error.message
-    stack: parseErrorStack error
-  }
+    stacks: Stack [ error ]
+    values: Accumulator()
 
-  setType failure, Failure
+  self.values.DEBUG = yes
 
-  Failure.errorCache.push error
+  setType self, Failure
 
-  error.failure = failure
+  self.track values
 
-  error[key] = value for key, value of Failure.ErrorMixin
+  return self
 
-  failure.addData newData
+#
+# Static data setup
+#
 
-  failure
-
-if isReactNative
-  Failure::print = ->
-    error = Error @reason
-    printErrorStack = require "printErrorStack"
-    printErrorStack error, @stack
-
-Failure::dedupe = (key) ->
-
-  values = []
-
-  if has this, key
-    values.push this[key]
-
-  if @dupes? and (has @dupes, key)
-    values = values.concat @dupes[key]
-
-  values
-
-Failure::throw = ->
-
-  exception = Error @reason
-
-  if isReactNative
-    ExceptionsManager.reportException exception, @isFatal, @stack
-
-  else if @isFatal
-    throw exception
-
-Failure::addData = (newData = {}) ->
-
-  if steal newData, "isFatal", yes
-    @isFatal = yes
-
-  stack = steal newData, "stack"
-  Failure.combineStacks @stack, stack if stack?
-
-  for key, value of newData
-
-    if this[key]?
-      @dupes ?= {}
-      @dupes[key] ?= []
-      @dupes[key].push value
-
-    else
-      this[key] = value
-
-  return
+Failure.fatality = null
 
 Failure.errorCache = []
 
-Failure.fatalError = null
+Failure.throwFailure = (error, values) ->
 
-Failure.throwFailure = (error, newData) ->
-  Failure error, newData
+  failure = error.failure
+  if isConstructor failure, Failure
+    error.trace()
+    failure.track values
+  else
+    error.failure = Failure error, values
+
+  Failure.errorCache.push error
   throw error
 
-Failure.combineStacks = (stack1, stack2) ->
-  unless stack2 instanceof Array
-    stack2 = [ stack2 ]
-  for frame in stack2
-    continue unless frame?
-    if frame instanceof Array
-      Failure.combineStacks stack1, frame
-    else if frame instanceof Error
-      stack3 = parseErrorStack frame
-      if (frame.skip instanceof Number) and (frame.skip > 0)
-        stack3 = stack3.slice frame.skip
-      Failure.combineStacks stack1, stack3
-    else if (frame.constructor is Object) or (frame.constructor is String)
-      stack1.push frame
+#
+# Failure.prototype
+#
+
+Failure::track = (values) ->
+
+  return unless isObject values
+
+  isFatal = steal values, "isFatal"
+  @isFatal = isFatal is yes if isFatal isnt undefined
+
+  stack = steal values, "stack"
+  @stacks.push stack if stack
+
+  @values.push values
+
+Failure::throw = ->
+
+  if isReactNative
+    ExceptionsManager.reportException @stacks.array[0], @isFatal, @stacks.flatten()
+
+  if @isFatal
+    throw @stacks.array[0]
+
+if isReactNative
+
+  printErrorStack = require "printErrorStack"
+  Failure::print = ->
+    isFatal = @isFatal
+    error = Error @reason
+    stack = @stacks.flatten()
+    ExceptionsManager.createException error, isFatal, stack, (exception) ->
+      message = exception.reason + "\n\n"
+      message += Stack.format exception.stack
+      console.log message
+
+#
+# Error.prototype
+#
+
+Error::trace = (title, options = {}) ->
+  return unless @failure
+  tracer = Error()
+  tracer.skip = options.skip
+  tracer.filter = options.filter
+  @failure.stacks.push [
+    title ?= "::  Further up the stack  ::"
+    tracer
+  ]
   return
 
-Failure.ErrorMixin =
+Error::throw = ->
+  return unless @failure
+  @failure.throw()
+  return
 
-  trace: (title) ->
-    return unless @failure?
-    fakeError = Error()
-    # fakeError.skip = 2
-    Failure.combineStacks @failure.stack, [
-      title ?= "::  Further up the stack  ::"
-      fakeError
-    ]
-    return
-
-  throw: ->
-    @failure?.throw()
-
-  catch: ->
-    return unless @failure?
-    index = Failure.errorCache.indexOf this
-    @failure = null
-    return if index < 0
-    Failure.errorCache.splice index, 1
-    return
+Error::catch = ->
+  return unless @failure
+  index = Failure.errorCache.indexOf this
+  @failure = null
+  return if index < 0
+  Failure.errorCache.splice index, 1
+  return
