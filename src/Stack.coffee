@@ -1,7 +1,6 @@
 
 isConstructor = require "isConstructor"
-NamedFunction = require "named-function"
-repeatString = require "repeat-string"
+NamedFunction = require "NamedFunction"
 flattenStack = require "flattenStack"
 setType = require "setType"
 
@@ -29,6 +28,5 @@ Stack.format = (stack) ->
     frame.file + ":" + frame.lineNumber + ":" + frame.column
   stack.map (frame, index) ->
     return frame unless isConstructor frame, Object
-    whitespace = repeatString " ", 2 + longestMethodName - frame.methodName.length
-    frame.methodName + whitespace + locations[index]
-  .join "\n"
+    frame.methodName + "\n" + locations[index]
+  .join "\n\n"

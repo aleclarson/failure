@@ -1,6 +1,7 @@
 
-NamedFunction = require "named-function"
-isReactNative = require "isReactNative"
+require "isReactNative"
+
+NamedFunction = require "NamedFunction"
 isConstructor = require "isConstructor"
 Accumulator = require "accumulator"
 isObject = require "isObject"
@@ -16,7 +17,8 @@ if isReactNative
     if failure.isFatal
       return if Failure.fatality
       Failure.fatality = failure
-      console.warn failure.reason
+      if GLOBAL.nativeLoggingHook then GLOBAL.nativeLoggingHook "\nJS Error: " + error.message + "\n" + error.stack
+      else console.warn failure.reason
     failure.throw()
 
 module.exports =
@@ -48,7 +50,6 @@ Failure.throwFailure = (error, values) ->
 
   failure = error.failure
   if isConstructor failure, Failure
-    error.trace()
     failure.track values
   else
     error.failure = Failure error, values

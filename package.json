@@ -8,9 +8,18 @@
     "isConstructor": "aleclarson/isConstructor#1.0.0",
     "isObject": "aleclarson/isObject#1.0.0",
     "isReactNative": "aleclarson/isReactNative#1.0.0",
-    "named-function": "aleclarson/named-function#1.0.3",
-    "repeat-string": "aleclarson/repeat-string#1.0.0",
+    "NamedFunction": "aleclarson/NamedFunction#1.0.0",
     "setType": "aleclarson/setType#1.0.0",
     "steal": "aleclarson/steal#1.0.0"
+  },
+  "lotus": {
+    "plugins": [
+      "lotus-coffee"
+    ],
+    "implicitDependencies": [
+      "ErrorUtils",
+      "ExceptionsManager",
+      "printErrorStack"
+    ]
   }
 }
