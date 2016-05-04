@@ -1,5 +1,7 @@
 var Accumulator, ExceptionsManager, Failure, NamedFunction, Stack, isConstructor, isObject, printErrorStack, setType, steal;
 
+require("isNodeJS");
+
 require("isReactNative");
 
 NamedFunction = require("NamedFunction");
@@ -35,6 +37,25 @@ if (isReactNative) {
       }
     }
     return failure["throw"]();
+  });
+} else if (isNodeJS) {
+  process.on("exit", function() {
+    var errorCache, failure, message, ref;
+    errorCache = require("failure").errorCache;
+    if (errorCache.length === 0) {
+      return;
+    }
+    ref = errorCache[errorCache.length - 1], message = ref.message, failure = ref.failure;
+    log.moat(1);
+    if (message) {
+      log.red("Error: ");
+      log.white(message);
+      log.moat(1);
+    }
+    repl.sync({
+      values: failure.values.flatten(),
+      stacks: failure.stacks
+    });
   });
 }
 

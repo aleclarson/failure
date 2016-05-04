@@ -1,4 +1,5 @@
 
+require "isNodeJS"
 require "isReactNative"
 
 NamedFunction = require "NamedFunction"
@@ -17,9 +18,23 @@ if isReactNative
     if failure.isFatal
       return if Failure.fatality
       Failure.fatality = failure
-      if GLOBAL.nativeLoggingHook then GLOBAL.nativeLoggingHook "\nJS Error: " + error.message + "\n" + error.stack
+      if GLOBAL.nativeLoggingHook
+        GLOBAL.nativeLoggingHook "\nJS Error: " + error.message + "\n" + error.stack
       else console.warn failure.reason
     failure.throw()
+
+else if isNodeJS
+  process.on "exit", ->
+    { errorCache } = require "failure"
+    return if errorCache.length is 0
+    { message, failure } = errorCache[errorCache.length - 1]
+    log.moat 1
+    if message
+      log.red "Error: "
+      log.white message
+      log.moat 1
+    repl.sync { values: failure.values.flatten(), stacks: failure.stacks }
+    return
 
 module.exports =
 Failure = NamedFunction "Failure", (error, values) ->
