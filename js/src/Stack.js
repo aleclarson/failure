@@ -23,7 +23,7 @@ Stack.prototype.flatten = function() {
 };
 
 Stack.prototype.print = function() {
-  return console.log(Stack.format(this.flatten()));
+  return console.log("\n" + Stack.format(this.flatten()));
 };
 
 Stack.flatten = flattenStack;

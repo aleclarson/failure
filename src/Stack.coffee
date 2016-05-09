@@ -15,7 +15,7 @@ Stack::flatten = ->
   Stack.flatten @array
 
 Stack::print = ->
-  console.log Stack.format @flatten()
+  console.log "\n" + Stack.format @flatten()
 
 Stack.flatten = flattenStack
 
