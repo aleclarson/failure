@@ -22,8 +22,12 @@ Stack.prototype.flatten = function() {
   return Stack.flatten(this.array);
 };
 
+Stack.prototype.format = function() {
+  return Stack.format(this.flatten());
+};
+
 Stack.prototype.print = function() {
-  return console.log("\n" + Stack.format(this.flatten()));
+  return console.log("\n" + this.format());
 };
 
 Stack.flatten = flattenStack;

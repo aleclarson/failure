@@ -47,14 +47,14 @@ if (isReactNative) {
     }
     ref = errorCache[errorCache.length - 1], message = ref.message, failure = ref.failure;
     log.moat(1);
-    if (message) {
-      log.red("Error: ");
-      log.white(message);
-      log.moat(1);
-    }
+    log.red("Error: ");
+    log.white(message);
+    log.moat(1);
+    log.gray.dim(failure.stacks.format());
+    log.moat(1);
+    repl.loopMode = "default";
     repl.sync({
-      values: failure.values.flatten(),
-      stacks: failure.stacks
+      values: failure.values.flatten()
     });
   });
 }

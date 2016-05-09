@@ -14,8 +14,11 @@ Stack::push = (stack) ->
 Stack::flatten = ->
   Stack.flatten @array
 
+Stack::format = ->
+  Stack.format @flatten()
+
 Stack::print = ->
-  console.log "\n" + Stack.format @flatten()
+  console.log "\n" + @format()
 
 Stack.flatten = flattenStack
 

@@ -29,11 +29,13 @@ else if isNodeJS
     return if errorCache.length is 0
     { message, failure } = errorCache[errorCache.length - 1]
     log.moat 1
-    if message
-      log.red "Error: "
-      log.white message
-      log.moat 1
-    repl.sync { values: failure.values.flatten(), stacks: failure.stacks }
+    log.red "Error: "
+    log.white message
+    log.moat 1
+    log.gray.dim failure.stacks.format()
+    log.moat 1
+    repl.loopMode = "default"
+    repl.sync { values: failure.values.flatten() }
     return
 
 module.exports =
