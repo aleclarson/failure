@@ -28,14 +28,16 @@ else if isNodeJS
     { errorCache } = require "failure"
     return if errorCache.length is 0
     { message, failure } = errorCache[errorCache.length - 1]
-    log.moat 1
-    log.red "Error: "
-    log.white message
-    log.moat 1
-    log.gray.dim failure.stacks.format()
-    log.moat 1
-    repl.loopMode = "default"
-    repl.sync { values: failure.values.flatten() }
+    if global.log
+      log.moat 1
+      log.red "Error: "
+      log.white message
+      log.moat 1
+      log.gray.dim failure.stacks.format()
+      log.moat 1
+    if global.repl
+      repl.loopMode = "default"
+      repl.sync { values: failure.values.flatten() }
     return
 
 module.exports =
@@ -70,8 +72,8 @@ Failure.throwFailure = (error, values) ->
     failure.track values
   else
     error.failure = Failure error, values
+    Failure.errorCache.push error
 
-  Failure.errorCache.push error
   throw error
 
 #
@@ -133,7 +135,7 @@ Error::throw = ->
 Error::catch = ->
   return unless @failure
   index = Failure.errorCache.indexOf this
-  @failure = null
   return if index < 0
+  @failure = null
   Failure.errorCache.splice index, 1
   return
