@@ -1,4 +1,4 @@
-var Accumulator, ExceptionsManager, Failure, NamedFunction, Stack, isConstructor, isObject, printErrorStack, setType, steal;
+var Accumulator, ExceptionsManager, Failure, NamedFunction, Stack, isConstructor, isObject, printErrorStack, setType;
 
 require("isNodeJS");
 
@@ -13,8 +13,6 @@ Accumulator = require("accumulator");
 isObject = require("isObject");
 
 setType = require("setType");
-
-steal = require("steal");
 
 Stack = require("./Stack");
 
@@ -46,20 +44,10 @@ if (isReactNative) {
       return;
     }
     ref = errorCache[errorCache.length - 1], message = ref.message, failure = ref.failure;
-    if (global.log) {
-      log.moat(1);
-      log.red("Error: ");
-      log.white(message);
-      log.moat(1);
-      log.gray.dim(failure.stacks.format());
-      log.moat(1);
-    }
-    if (global.repl) {
-      repl.loopMode = "default";
-      repl.sync({
-        values: failure.values.flatten()
-      });
-    }
+    console.log("");
+    console.log(message);
+    console.log(require('util').format(failure.values.flatten()));
+    console.log("");
   });
 }
 
@@ -94,17 +82,16 @@ Failure.throwFailure = function(error, values) {
 };
 
 Failure.prototype.track = function(values) {
-  var isFatal, stack;
   if (!isObject(values)) {
     return;
   }
-  isFatal = steal(values, "isFatal");
-  if (isFatal !== void 0) {
-    this.isFatal = isFatal === true;
+  if (values.isFatal != null) {
+    this.isFatal = values.isFatal === true;
+    delete values.isFatal;
   }
-  stack = steal(values, "stack");
-  if (stack) {
-    this.stacks.push(stack);
+  if (values.stack != null) {
+    this.stacks.push(values.stack);
+    delete values.stack;
   }
   return this.values.push(values);
 };
