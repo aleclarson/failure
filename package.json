@@ -18,8 +18,7 @@
     ],
     "implicitDependencies": [
       "ErrorUtils",
-      "ExceptionsManager",
-      "printErrorStack"
+      "ExceptionsManager"
     ]
   }
 }

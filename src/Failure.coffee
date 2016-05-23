@@ -13,47 +13,23 @@ Stack = require "./Stack"
 if isReactNative
   ExceptionsManager = require "ExceptionsManager"
   (require "ErrorUtils").setGlobalHandler (error, isFatal) ->
-    failure = error.failure or Failure error, { isFatal }
-    if failure.isFatal
-      return if Failure.fatality
-      Failure.fatality = failure
-      if GLOBAL.nativeLoggingHook
-        GLOBAL.nativeLoggingHook "\nJS Error: " + error.message + "\n" + error.stack
-      else console.warn failure.reason
+    failure = error.failure or Failure error
+    failure.isFatal = no if not isFatal
     failure.throw()
 
 else if isNodeJS
-  process.on "exit", ->
-    { errorCache } = require "failure"
-    return if errorCache.length is 0
-    { message, failure } = errorCache[errorCache.length - 1]
-    console.log ""
-    console.log message
-    # failure.stacks.print()
-    console.log require('util').format failure.values.flatten()
-    console.log ""
-    # if global.log
-    #   log.moat 1
-    #   log.red "Error: "
-    #   log.white message
-    #   log.moat 1
-    #   log.gray.dim failure.stacks.format()
-    #   log.moat 1
-    # if global.repl
-    #   repl.loopMode = "default"
-    #   repl.sync { values: failure.values.flatten() }
-    return
+  process.on "uncaughtException", (error) ->
+    failure = error.failure or Failure error
+    failure.throw()
 
 module.exports =
 Failure = NamedFunction "Failure", (error, values) ->
 
   self =
     isFatal: yes
-    reason: error.message
+    error: error
     stacks: Stack [ error ]
     values: Accumulator()
-
-  self.values.DEBUG = yes
 
   setType self, Failure
 
@@ -69,15 +45,20 @@ Failure.fatality = null
 
 Failure.errorCache = []
 
-Failure.throwFailure = (error, values) ->
+Failure.trackFailure = (error, values) ->
 
   failure = error.failure
   if isConstructor failure, Failure
     failure.track values
+
   else
     error.failure = Failure error, values
     Failure.errorCache.push error
 
+  return
+
+Failure.throwFailure = (error, values) ->
+  Failure.trackFailure error, values
   throw error
 
 #
@@ -86,7 +67,7 @@ Failure.throwFailure = (error, values) ->
 
 Failure::track = (values) ->
 
-  return unless isObject values
+  return if not isObject values
 
   if values.isFatal?
     @isFatal = values.isFatal is yes
@@ -99,21 +80,39 @@ Failure::track = (values) ->
   @values.push values
 
 Failure::throw = ->
-
-  if isReactNative
-    ExceptionsManager.reportException @stacks.array[0], @isFatal, @stacks.flatten()
-
-  if @isFatal
-    throw @stacks.array[0]
+  if @isFatal and not Failure.fatality
+    Failure.fatality = this
+    if isReactNative
+      if global.nativeLoggingHook
+        global.nativeLoggingHook "\nJS Error: " + @error.message + "\n" + @stacks.flatten()
+      else ExceptionsManager.reportException @error, @isFatal, @stacks.flatten()
+    else if isNodeJS
+      try
+        throw @error if not global.log
+        log.moat 1
+        log.red "Error: "
+        log.white error.message
+        log.moat 1
+        log.gray.dim error.failure.stacks.format()
+        log.moat 1
+        return if not global.repl
+        repl.loopMode = "default"
+        values = error.failure.values.flatten()
+        values.error = error
+        repl.sync values
+      catch error
+        console.log ""
+        console.log error.stack
+        console.log ""
+      process.exit()
+    else console.warn @error.message
+  return
 
 if isReactNative
-
-  printErrorStack = require "printErrorStack"
   Failure::print = ->
     isFatal = @isFatal
-    error = Error @reason
     stack = @stacks.flatten()
-    ExceptionsManager.createException error, isFatal, stack, (exception) ->
+    ExceptionsManager.createException @error, isFatal, stack, (exception) ->
       message = exception.reason + "\n\n"
       message += Stack.format exception.stack
       console.log message
@@ -123,7 +122,7 @@ if isReactNative
 #
 
 Error::trace = (title, options = {}) ->
-  return unless @failure
+  return if not @failure
   tracer = Error()
   tracer.skip = options.skip
   tracer.filter = options.filter
@@ -134,12 +133,12 @@ Error::trace = (title, options = {}) ->
   return
 
 Error::throw = ->
-  return unless @failure
+  return if not @failure
   @failure.throw()
   return
 
 Error::catch = ->
-  return unless @failure
+  return if not @failure
   index = Failure.errorCache.indexOf this
   return if index < 0
   @failure = null
