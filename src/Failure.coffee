@@ -91,18 +91,18 @@ Failure::throw = ->
         throw @error if not global.log
         log.moat 1
         log.red "Error: "
-        log.white error.message
+        log.white @error.message
         log.moat 1
-        log.gray.dim error.failure.stacks.format()
+        log.gray.dim @stacks.format()
         log.moat 1
         return if not global.repl
         repl.loopMode = "default"
-        values = error.failure.values.flatten()
-        values.error = error
+        values = @values.flatten()
+        values.error = @error
         repl.sync values
-      catch error
+      catch e
         console.log ""
-        console.log error.stack
+        console.log e.stack
         console.log ""
       process.exit()
     else console.warn @error.message

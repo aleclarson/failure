@@ -83,7 +83,7 @@ Failure.prototype.track = function(values) {
 };
 
 Failure.prototype["throw"] = function() {
-  var error, values;
+  var e, values;
   if (this.isFatal && !Failure.fatality) {
     Failure.fatality = this;
     if (isReactNative) {
@@ -99,21 +99,21 @@ Failure.prototype["throw"] = function() {
         }
         log.moat(1);
         log.red("Error: ");
-        log.white(error.message);
+        log.white(this.error.message);
         log.moat(1);
-        log.gray.dim(error.failure.stacks.format());
+        log.gray.dim(this.stacks.format());
         log.moat(1);
         if (!global.repl) {
           return;
         }
         repl.loopMode = "default";
-        values = error.failure.values.flatten();
-        values.error = error;
+        values = this.values.flatten();
+        values.error = this.error;
         repl.sync(values);
       } catch (error1) {
-        error = error1;
+        e = error1;
         console.log("");
-        console.log(error.stack);
+        console.log(e.stack);
         console.log("");
       }
       process.exit();
