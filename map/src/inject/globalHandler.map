@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "GlobalHandler.js",
+  "sourceRoot": "../../../src/inject",
+  "sources": [
+    "GlobalHandler.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}

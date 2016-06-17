@@ -1,0 +1,2 @@
+
+require('./js/src/global')

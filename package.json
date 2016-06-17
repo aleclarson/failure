@@ -1,0 +1,24 @@
+{
+  "name": "failure",
+  "version": "1.0.0",
+  "main": "js/src/Failure",
+  "dependencies": {
+    "NamedFunction": "aleclarson/NamedFunction#2.0.0",
+    "accumulator": "aleclarson/accumulator#1.0.0",
+    "flattenStack": "aleclarson/flattenStack#1.0.0",
+    "isConstructor": "aleclarson/isConstructor#1.0.0",
+    "isNodeJS": "aleclarson/isNodeJS#1.0.0",
+    "isObject": "aleclarson/isObject#1.0.0",
+    "isReactNative": "aleclarson/isReactNative#1.0.0",
+    "setType": "aleclarson/setType#1.0.0"
+  },
+  "lotus": {
+    "plugins": [
+      "lotus-coffee"
+    ],
+    "implicitDependencies": [
+      "ErrorUtils",
+      "ExceptionsManager"
+    ]
+  }
+}
