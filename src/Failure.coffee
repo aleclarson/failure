@@ -1,6 +1,6 @@
 
-require "isNodeJS"
 require "isReactNative"
+require "isNodeJS"
 
 NamedFunction = require "NamedFunction"
 isConstructor = require "isConstructor"
@@ -9,18 +9,6 @@ isObject = require "isObject"
 setType = require "setType"
 
 Stack = require "./Stack"
-
-if isReactNative
-  ExceptionsManager = require "ExceptionsManager"
-  (require "ErrorUtils").setGlobalHandler (error, isFatal) ->
-    failure = error.failure or Failure error
-    failure.isFatal = no if not isFatal
-    failure.throw()
-
-else if isNodeJS
-  process.on "uncaughtException", (error) ->
-    failure = error.failure or Failure error
-    failure.throw()
 
 module.exports =
 Failure = NamedFunction "Failure", (error, values) ->
@@ -61,6 +49,20 @@ Failure.throwFailure = (error, values) ->
   Failure.trackFailure error, values
   throw error
 
+Failure.useGlobalHandler = ->
+
+  if isReactNative
+    ExceptionsManager = require "ExceptionsManager"
+    (require "ErrorUtils").setGlobalHandler (error, isFatal) ->
+      failure = error.failure or Failure error
+      failure.isFatal = no if not isFatal
+      failure.throw()
+
+  else if isNodeJS
+    process.on "uncaughtException", (error) ->
+      failure = error.failure or Failure error
+      failure.throw()
+
 #
 # Failure.prototype
 #
@@ -80,39 +82,54 @@ Failure::track = (values) ->
   @values.push values
 
 Failure::throw = ->
-  if @isFatal and not Failure.fatality
-    Failure.fatality = this
-    if isReactNative
-      if global.nativeLoggingHook
-        global.nativeLoggingHook "\nJS Error: " + @error.message + "\n" + @stacks.flatten()
-      else ExceptionsManager.reportException @error, @isFatal, @stacks.flatten()
-    else if isNodeJS
-      try
-        throw @error if not global.log
-        log.moat 1
-        log.red "Error: "
-        log.white @error.message
-        log.moat 1
-        log.gray.dim @stacks.format()
-        log.moat 1
-        return if not global.repl
-        repl.loopMode = "default"
-        values = @values.flatten()
-        values.error = @error
-        repl.sync values
-      catch e
-        console.log ""
-        console.log e.stack
-        console.log ""
-      process.exit()
-    else console.warn @error.message
-  return
+
+  return if not @isFatal
+  return if Failure.fatality
+
+  Failure.fatality = this
+  console.error @error.stack
+
+  if isReactNative
+
+    if global.nativeLoggingHook
+      message = "\nJS Error: " + @error.message + "\n" + @stacks.flatten()
+      global.nativeLoggingHook message
+      return
+
+    EM = require "ExceptionsManager"
+    EM.reportException @error, @isFatal, @stacks.flatten()
+    return
+
+  return if not isNodeJS
+
+  try
+    throw @error if not global.log
+    log.moat 1
+    log.red "Error: "
+    log.white @error.message
+    log.moat 1
+    log.gray.dim @stacks.format()
+    log.moat 1
+
+    if global.repl
+      repl.loopMode = "default"
+      values = @values.flatten()
+      values.error = @error
+      repl.sync values
+
+  catch e
+    console.log ""
+    console.log e.stack
+    console.log ""
+
+  process.exit()
 
 if isReactNative
   Failure::print = ->
     isFatal = @isFatal
     stack = @stacks.flatten()
-    ExceptionsManager.createException @error, isFatal, stack, (exception) ->
+    EM = require "ExceptionsManager"
+    EM.createException @error, isFatal, stack, (exception) ->
       message = exception.reason + "\n\n"
       message += Stack.format exception.stack
       console.log message
